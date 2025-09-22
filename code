@@ -1,0 +1,84 @@
+# Titanic Dataset Preprocessing - Full Code
+
+# Step 1: Import libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+
+# --------------------------------------------------
+# Option A: Load Titanic dataset from a CSV file
+# Make sure the Titanic-Dataset.csv is in the same folder OR give full path
+# Example: df = pd.read_csv(r"C:\Users\vasuk\Downloads\Titanic-Dataset.csv")
+
+try:
+    df = pd.read_csv("Titanic-Dataset.csv")
+    print(" Loaded dataset from CSV file")
+except FileNotFoundError:
+    print("CSV not found, loading built-in seaborn Titanic dataset instead...")
+    df = sns.load_dataset("titanic")
+
+# --------------------------------------------------
+# Step 1: Explore basic info
+print("\nFirst 5 rows:\n", df.head())
+print("\nDataset Info:\n")
+print(df.info())
+print("\nMissing values:\n", df.isnull().sum())
+
+# --------------------------------------------------
+# Step 2: Handle missing values
+# Fill numerical missing values
+if 'age' in df.columns:  # seaborn dataset uses lowercase column names
+    df['age'].fillna(df['age'].median(), inplace=True)
+if 'Age' in df.columns:
+    df['Age'].fillna(df['Age'].median(), inplace=True)
+
+# Fill categorical missing values
+if 'embarked' in df.columns:
+    df['embarked'].fillna(df['embarked'].mode()[0], inplace=True)
+if 'Embarked' in df.columns:
+    df['Embarked'].fillna(df['Embarked'].mode()[0], inplace=True)
+
+# Drop Cabin if present
+for col in ['Cabin', 'deck']:
+    if col in df.columns:
+        df.drop(columns=[col], inplace=True)
+
+print("\nMissing values after handling:\n", df.isnull().sum())
+
+# --------------------------------------------------
+# Step 3: Convert categorical features into numerical
+# Find categorical columns (object or category dtype)
+cat_cols = df.select_dtypes(include=['object', 'category']).columns
+df = pd.get_dummies(df, columns=cat_cols, drop_first=True)
+
+print("\nAfter encoding:\n", df.head())
+
+# --------------------------------------------------
+# Step 4: Normalize / Standardize numerical features
+num_cols = df.select_dtypes(include=['int64', 'float64']).columns
+
+scaler = StandardScaler()
+df[num_cols] = scaler.fit_transform(df[num_cols])
+
+print("\nAfter scaling (first 5 rows of numerical features):\n", df[num_cols].head())
+
+# --------------------------------------------------
+# Step 5: Visualize and remove outliers
+# Example with 'fare' or 'Fare'
+col_name = 'fare' if 'fare' in df.columns else 'Fare'
+if col_name in df.columns:
+    plt.figure(figsize=(10,5))
+    sns.boxplot(x=df[col_name])
+    plt.title(f"{col_name} Boxplot")
+    plt.show()
+
+    # Remove outliers using IQR method
+    Q1 = df[col_name].quantile(0.25)
+    Q3 = df[col_name].quantile(0.75)
+    IQR = Q3 - Q1
+    df = df[(df[col_name] >= Q1 - 1.5*IQR) & (df[col_name] <= Q3 + 1.5*IQR)]
+
+print("\n Final dataset shape after cleaning:", df.shape)
+print("\nCleaned Dataset Preview:\n", df.head())
